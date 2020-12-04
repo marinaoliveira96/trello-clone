@@ -1,7 +1,12 @@
 import { createContext, useReducer, useContext } from 'react';
 import { nanoid } from 'nanoid';
-import { overrideItemAtIndex, findItemIndexById } from './utils/arrayUtils';
-import { act } from 'react-dom/test-utils';
+import {
+  findItemIndexById,
+  overrideItemAtIndex,
+  moveItem,
+} from './utils/arrayUtils';
+
+import { DragItem } from './DragItem';
 
 interface Task {
   id: string;
@@ -16,6 +21,7 @@ interface List {
 
 export interface AppState {
   lists: List[];
+  draggedItem: DragItem | undefined;
 }
 
 interface AppStateContextProps {
@@ -25,12 +31,23 @@ interface AppStateContextProps {
 
 type Action =
   | {
+      type: 'SET_DRAGGED_ITEM';
+      payload: DragItem | undefined;
+    }
+  | {
       type: 'ADD_LIST';
       payload: string;
     }
   | {
       type: 'ADD_TASK';
       payload: { text: string; listId: string };
+    }
+  | {
+      type: 'MOVE_LIST';
+      payload: {
+        dragIndex: number;
+        hoverIndex: number;
+      };
     };
 
 const AppStateContext = createContext<AppStateContextProps>(
@@ -75,6 +92,17 @@ const appStateReducer = (state: AppState, action: Action): AppState => {
       };
     }
 
+    case 'MOVE_LIST': {
+      const { dragIndex, hoverIndex } = action.payload;
+      return {
+        ...state,
+        lists: moveItem(state.lists, dragIndex, hoverIndex),
+      };
+    }
+
+    case 'SET_DRAGGED_ITEM': {
+      return { ...state, draggedItem: action.payload };
+    }
     default: {
       return state;
     }
@@ -82,6 +110,7 @@ const appStateReducer = (state: AppState, action: Action): AppState => {
 };
 
 const appData: AppState = {
+  draggedItem: undefined,
   lists: [
     {
       id: '0',
@@ -100,6 +129,7 @@ const appData: AppState = {
     },
   ],
 };
+
 export const AppStateProvider = ({ children }: React.PropsWithChildren<{}>) => {
   const [state, dispatch] = useReducer(appStateReducer, appData);
   return (
